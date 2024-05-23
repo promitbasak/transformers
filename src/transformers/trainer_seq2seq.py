@@ -161,7 +161,6 @@ class Seq2SeqTrainer(Trainer):
             A dictionary containing the evaluation loss and the potential metrics computed from the predictions. The
             dictionary also contains the epoch number which comes from the training state.
         """
-
         gen_kwargs = gen_kwargs.copy()
 
         # Use legacy argument setting if a) the option is not explicitly passed; and b) the argument is set in the
@@ -227,7 +226,6 @@ class Seq2SeqTrainer(Trainer):
         """
 
         gen_kwargs = gen_kwargs.copy()
-
         # Use legacy argument setting if a) the option is not explicitly passed; and b) the argument is set in the
         # training args
         if (
@@ -240,7 +238,6 @@ class Seq2SeqTrainer(Trainer):
             gen_kwargs["num_beams"] = self.args.generation_num_beams
         self.gather_function = self.accelerator.gather
         self._gen_kwargs = gen_kwargs
-
         return super().predict(test_dataset, ignore_keys=ignore_keys, metric_key_prefix=metric_key_prefix)
 
     def prediction_step(
@@ -273,7 +270,6 @@ class Seq2SeqTrainer(Trainer):
             Tuple[Optional[float], Optional[torch.Tensor], Optional[torch.Tensor]]: A tuple with the loss, logits and
             labels (each being optional).
         """
-
         if not self.args.predict_with_generate or prediction_loss_only:
             return super().prediction_step(
                 model, inputs, prediction_loss_only=prediction_loss_only, ignore_keys=ignore_keys
@@ -286,6 +282,9 @@ class Seq2SeqTrainer(Trainer):
         # non-`None` gen_kwargs > model.generation_config > default GenerationConfig()
         if len(gen_kwargs) == 0 and hasattr(self, "_gen_kwargs"):
             gen_kwargs = self._gen_kwargs.copy()
+        if len(model.generation_config.generation_kwargs) > 0:
+            forced_kwargs = { k: v for k,v in model.generation_config.generation_kwargs.items() if k not in gen_kwargs }
+            gen_kwargs = {**gen_kwargs, **forced_kwargs}
         if "num_beams" in gen_kwargs and gen_kwargs["num_beams"] is None:
             gen_kwargs.pop("num_beams")
         if "max_length" in gen_kwargs and gen_kwargs["max_length"] is None:
